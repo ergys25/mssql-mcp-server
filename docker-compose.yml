@@ -1,0 +1,64 @@
+services:
+  mssql-mcp-server:
+    build: .
+    container_name: mssql-mcp
+    restart: unless-stopped
+    ports:
+      - "8585:8585"
+    environment:
+      # Server Configuration
+      PORT: 8585
+      TRANSPORT: sse
+      HOST: 0.0.0.0
+      PING_INTERVAL: 60000
+
+      # Database Configuration
+      DB_SERVER: ${DB_SERVER:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-1433}
+      DB_DATABASE: ${DB_DATABASE:-master}
+      DB_USER: ${DB_USER:-sa}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_ENCRYPT: ${DB_ENCRYPT:-true}
+      DB_TRUST_SERVER_CERT: ${DB_TRUST_SERVER_CERT:-true}
+      DB_CONNECTION_TIMEOUT: ${DB_CONNECTION_TIMEOUT:-15000}
+      DB_REQUEST_TIMEOUT: ${DB_REQUEST_TIMEOUT:-15000}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      DB_POOL_MIN: ${DB_POOL_MIN:-0}
+      DB_POOL_IDLE_TIMEOUT: ${DB_POOL_IDLE_TIMEOUT:-30000}
+
+      # Query Results Storage
+      QUERY_RESULTS_PATH: /usr/src/app/query_results
+
+      # Logging Configuration
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FILE: /usr/src/app/logs/mcp-server.log
+      LOG_MAX_SIZE: ${LOG_MAX_SIZE:-10m}
+      LOG_MAX_FILES: ${LOG_MAX_FILES:-5}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+
+      # Security Configuration
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+
+    volumes:
+      - ./query_results:/usr/src/app/query_results
+      - ./logs:/usr/src/app/logs
+
+    networks:
+      - mcp-network
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8585/diagnostic"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mssql-mcp.rule=Host(`mssql-mcp.local`)"
+      - "traefik.http.services.mssql-mcp.loadbalancer.server.port=8585"
+
+networks:
+  mcp-network:
+    driver: bridge

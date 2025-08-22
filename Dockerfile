@@ -32,9 +32,11 @@ COPY --from=builder /usr/src/app .
 
 USER nextjs
 
-EXPOSE 3333
+EXPOSE 8585
 
 # Set the correct environment variables
-ENV PORT=3333
+ENV PORT=8585
+ENV TRANSPORT=sse
+ENV HOST=0.0.0.0
 
 CMD ["node", "server.mjs"] 
